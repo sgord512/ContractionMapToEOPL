@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+    <head>
+	<style>
+	 .code {
+	     font-family: monospace
+	 }
+	</style>
+	<script type="text/javascript" src="underscore.js"></script>
+	<script type="text/javascript" src="paper-full.js"></script>
+	<!-- <script type="text/javascript" src="rangeslider.js"></script> -->
+	<!-- Define inlined PaperScript associate it with myCanvas -->
+	<script type="text/javascript" src="contractionmap.js"></script>
+	<script type="text/javascript">
+	 paper.install(window);
+	 window.onload = function() {
+	     var canvas = document.getElementById('myCanvas');
+	     var imageButton = document.getElementById('canvasToPng');
+	     
+	     // Setup directly from canvas id:
+	     paper.setup(canvas);
+	     
+	     var app = new App(project, 860);
+	     window.app = app;
+	     
+	     imageButton.addEventListener('click', function (e) {
+		 var dataURL = canvas.toDataURL('image/png');
+		 imageButton.href = dataURL;
+	     });
+	     
+	     var nightModeButton = document.getElementById('toggleNightMode');
+	     nightModeButton.addEventListener('click', function(e) {
+		 app.toggleNightMode();
+	     });
+
+	     var toggleAddBorderButton = document.getElementById('toggleAddBorder');
+	     toggleAddBorderButton.addEventListener('click', function(e) {
+		 app.toggleAddBorder();
+	     });
+
+	     var toggleShowPotentialButton = document.getElementById('toggleShowPotential');
+	     toggleShowPotentialButton.addEventListener('click', function(e) {
+		 app.toggleShowPotential();
+	     });
+
+	     
+	     var functionLineButton = document.getElementById('toggleFunctionLines');
+	     functionLineButton.functionlineson = true;
+	     functionLineButton.addEventListener('click', function(e) {
+		 app.toggleFunctionLines();
+	     });
+	     
+	     var functionTextArea = document.getElementById('functionTextArea');
+	     
+	     function populateTextAreaWithFunction(f) {
+		 var startingText = f.toString().split("\n");
+		 startingText.splice(0, 1);
+		 startingText.splice(-2,2);
+		 functionTextArea.value = startingText.join("\n");
+	     }
+	     
+	     populateTextAreaWithFunction(App.StartingFunctions.contractionmap); 
+	     
+	     var runFunctionButton = document.getElementById('runFunction');
+	     function runFunction() {
+		 var functionText = functionTextArea.value;
+		 var theFunction = function(inPoint, clampToSquare) {
+		     eval(functionText);
+		     return outPoint;		 
+		 }
+		 
+		 app.setFunction(theFunction);
+	     }
+	     
+	     runFunctionButton.addEventListener('click', runFunction);
+	     
+	     var functionSelect = document.getElementById('functionSelect');
+	     _.each(App.StartingFunctions, function(func, name) {
+		 var option = document.createElement("option");
+		 option.setAttribute("value", name);
+		 var optionText = document.createTextNode(name);		 
+		 option.appendChild(optionText);
+		 functionSelect.appendChild(option);
+	     });
+	     functionSelect.addEventListener('change', function(event) {
+		 populateTextAreaWithFunction(App.StartingFunctions[event.target.value]);
+	     });
+	     
+	     var gridSizeSlider = document.getElementById('gridSizeSlider');
+	     gridSizeSlider.addEventListener('change', function(event) {
+		 app.setSize(parseInt(event.target.value));
+		 app.makeGrid();
+		 app.redrawPoints();
+	     });
+	 }
+	</script>
+    </head>
+    <body>
+	<canvas id="myCanvas" style="float: left; margin-right: 10px;" width="860px" height="860px"></canvas>
+	<div id="div1">
+	    <a href="#" id="canvasToPng", target="_blank">Convert to PNG.</a>
+	    <button id="toggleNightMode">Toggle Light/Dark Background</button>
+	    <button id="toggleFunctionLines">Toggle Displacement Vectors</button>
+	    <button id="toggleAddBorder">Toggle Add Border</button>
+	    <button id="toggleShowPotential">Toggle Show Potential</button>
+	</div>
+	<div id="div2" style="clear: right;">
+	    <label>Size of a grid cell: <input id="gridSizeSlider" type="range" min="8" max="100" step="1" value="48"></label>
+	    <select id="functionSelect">
+	    </select>
+	    <button id="runFunction">Run with given function</button>
+	</div>
+	<div id="div3" style="clear: right;">
+	    <textarea id="functionTextArea" rows="30" cols="80" ></textarea>
+	</div>
+	<div id="help" style="clear: right;">
+	  <p>To define your own Brouwer function, edit the code above and click on the button labeled "Run with given function". When defining a function, you need to define and fill in the value of the variable <span class="code">outPoint</span> as seen above. To clamp the output point to the [0,1]^2 interval, use the pre-defined function <span class="code">clampToSquare</span>. The function you write will be executed on points in the interval [0,1]^2. You can use anything in Javascript to define your function, and all the mathematical functions available by default are documented <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math">here</a>. For reasons that aren't worth describing, all trig functions use angles measured clockwise from the +x ray. Let me know if this breaks.</p>
+	  <p>Note that potentials will only show up when the grid is sufficiently coarse so that the text will be legible.</p>
+	    <p>It should also be relatively easy to understand the code and make changes as needed if you have some familiarity with Javascript and/or Paperjs (the drawing library I use).</p>
+	</div>
+    </body>
+</html>
