@@ -1,9 +1,5 @@
 function App(project, canvasSize) {
 
-    // Fix a size large enough so that I would show the potential values, and then go through and verify that all teh correct cells are in fact having values computed. I believe the problem is somewhere in getColorFromPoint or in an off-by-one indexing issue elsewhere.
-
-    // Figure out why some points are Red that shouldn't be Red, in the bottom right corner of the square in the standard default function.
-
     this.totalSize = canvasSize;
     this.textMargin = 3;
     this.margin = 10;
