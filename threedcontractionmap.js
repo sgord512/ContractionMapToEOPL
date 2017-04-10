@@ -21,6 +21,8 @@ App = function(window, document) {
 
     this.light = new THREE.DirectionalLight(0xffffff, 0.5);
     this.light.position.set(0, 1, 1);
+    var ambientLight = new THREE.AmbientLight(0x404040);
+    this.scene.add(ambientLight);
     this.scene.add(this.light);
 
 
@@ -36,24 +38,28 @@ App = function(window, document) {
 
     document.body.appendChild(this.renderer.domElement);
     
-    this.axes = this.makeAxes();
-    this.grid = this.makeGrid(this.N);
+    this.group = new THREE.Group();    
+    this.group.add(this.makeAxes());
+    this.group.add(this.makeGrid(this.N));
     
     this.points = new THREE.Group();
     this.functionArrows = new THREE.Group();
 
-    //this.makePoints(this.N);
+    this.makePoints(this.N);
     
     this.planes = this.makePlanes();
 
-    this.group = new THREE.Group();
-    
-    //this.group.add(this.grid);
-    this.group.add(this.axes);
-    //this.group.add(this.points);
-    this.group.add(this.planes);
-    //this.group.add(this.functionArrows);
-    this.group.add(this.makeIcosphere(5));
+    this.group.add(this.points);
+    //this.group.add(this.planes);
+    this.group.add(this.functionArrows);
+    var icosphere = this.makeIcosphere(6);
+    icosphere.applyMatrix((new THREE.Matrix4()).makeScale(0.2, 0.2, 0.2));
+    icosphere.translateX(-0.5);
+    icosphere.translateY(1);
+    icosphere.translateZ(0);
+    icosphere.updateMatrix();
+    this.group.add(icosphere);
+    //this.group.add(this.makeIcosphere(5));
 
     this.group.scale = this.vec3(this.N, this.N, this.N);
     this.group.translateX(-1/2);
@@ -71,7 +77,7 @@ App.prototype.vec3 = function(x, y, z) {
 };
 
 App.prototype.makeGrid = function(n) {
-    var material = new THREE.LineBasicMaterial({ color: 0xffffff });
+    var material = new THREE.LineDashedMaterial({ color: 0xffffff, scale: 0.14 });
     var geometry = new THREE.Geometry();
     // All the lines    
     for (var i = 0; i <= n; i++) {
@@ -102,11 +108,11 @@ App.prototype.makeAxes = function() {
 };
 
 App.prototype.makePoints = function(n) {
-    var geometry = new THREE.SphereGeometry(0.02, 24, 24);
-    var materialGreen = new THREE.MeshLambertMaterial({color: App.COLOR_GREEN });
-    var materialRed = new THREE.MeshLambertMaterial({color: App.COLOR_RED });
-    var materialBlue = new THREE.MeshLambertMaterial({color: App.COLOR_BLUE });
-    var materialYellow = new THREE.MeshLambertMaterial({color: App.COLOR_YELLOW });
+    var geometry = new THREE.SphereGeometry(0.014, 24, 24);
+    var materialGreen = new THREE.MeshBasicMaterial({color: App.COLOR_GREEN });
+    var materialRed = new THREE.MeshBasicMaterial({color: App.COLOR_RED });
+    var materialBlue = new THREE.MeshBasicMaterial({color: App.COLOR_BLUE });
+    var materialYellow = new THREE.MeshBasicMaterial({color: App.COLOR_YELLOW });
     
     var materials = {};
     materials[App.COLOR_GREEN] = materialGreen;
@@ -124,7 +130,7 @@ App.prototype.makePoints = function(n) {
 	this.functionArrows = new THREE.Group();
     }
 
-    var lineGeometry = new THREE.Geometry();
+
     
     for (var i = 0; i <= n; i++) {
 	for (var j = 0; j <= n; j++) {
@@ -139,35 +145,42 @@ App.prototype.makePoints = function(n) {
 		sphere.position.set(i/n, j/n, k/n);
 		sphere.material = materials[color];
 		this.points.add(sphere);
-		
-		
+
+		var lineGeometry = new THREE.Geometry();
 		lineGeometry.vertices.push(inputPoint);
 		lineGeometry.vertices.push(outputPoint);
+		this.functionArrows.add(new THREE.LineSegments(
+		    lineGeometry,
+		    new THREE.LineBasicMaterial({ color: color, linewidth: 5 })
+		));
 	    }
 	}
     }
 
-    var functionLines = new THREE.LineSegments(
-	lineGeometry,
-	new THREE.LineBasicMaterial({ color: App.COLOR_GREEN }));
-    this.functionArrows.add(functionLines);
+    //this.functionArrows.add(functionLines);
 };
 
-App.prototype.colorPointFromDisplacement = function(displacement) {
-    // Need to figure out tie-breaking, and what to do at the boundaries.
-    var dots = this.getDotProducts(displacement);
-    
-    if (dots.XY >= 0 &&	dots.YZ >= 0 &&	dots.XZ <= 0) {
-	return App.COLOR_GREEN;
-    } else if (dots.YZ <= 0 && dots.YW >= 0 && dots.ZW <= 0) {
-	return App.COLOR_YELLOW;
-    } else if (dots.XY <= 0 && dots.XW >= 0 && dots.YW <= 0) {
-	return App.COLOR_RED;
-    } else if (dots.YZ <= 0 && dots.YW >= 0 && dots.ZW <= 0) {    
-	return App.COLOR_BLUE;
-    } else {
-	throw 'At least one of the above conditions should have been true!';
+App.prototype.colorPointFromDisplacement = function(displacement, point) {
+    if (!point) {
+	point = vec3(0.5, 0.5, 0.5);
     }
+
+    // For interior points, assign ties in a consistent way to one of the available options.
+    // For border points, keep track of all the subsets that are available, and pick one of the points from the subset. 
+    // So I should probably have two branches, one for interior, and one for border points.
+    
+    var dots = this.getDotProducts(displacement);
+    if (dots.XY && dots.XZ && dots.YZ) {
+    	return App.COLOR_GREEN;
+    } else if (!dots.YZ && dots.YW && !dots.ZW) {
+    	return App.COLOR_YELLOW;
+    } else if (!dots.XY && dots.XW && !dots.YW) {
+	return App.COLOR_RED;
+    } else if (!dots.XZ && !dots.XW && dots.ZW) {
+	return App.COLOR_BLUE;
+    }
+
+    return 0xFFFFFF;
 };
 
 App.prototype.makePlaneGeometry = function(topLeft, bottomLeft, topRight, bottomRight) {
@@ -211,7 +224,7 @@ App.prototype.makePlanes = function() {
 	//return new THREE.PlaneGeometry(1, 1);
     }
 
-    var wvec = vec3(-1, -1, -1).multiplyScalar(1/Math.sqrt(3));
+    var wvec = vec3(-1, -1, -1).multiplyScalar(Math.sqrt(2/3));
     
     var xyPlane = plane(
 	vec3(0, 1, 0),
@@ -243,7 +256,7 @@ App.prototype.makePlanes = function() {
     var xwPlane = plane(
 	vec3(1, 0, 0),
 	vec3(0, 0, 0),
-	vec3(1, 0, 0).add(wvec),
+	vec3(1, 0, 0).add(wvec).setX(1),
 	vec3().copy(wvec)
     );
     planesGroup.add(new THREE.Mesh(xwPlane, this.makeBasicMaterial(App.COLOR_RED, THREE.FrontSide)),
@@ -252,7 +265,7 @@ App.prototype.makePlanes = function() {
     var ywPlane = plane(
 	vec3(0, 1, 0),
 	vec3(0, 0, 0),
-	vec3(0, 1, 0).add(wvec),
+	vec3(0, 1, 0).add(wvec).setY(1),
 	vec3().copy(wvec)
     );
     planesGroup.add(new THREE.Mesh(ywPlane, this.makeBasicMaterial(App.COLOR_YELLOW, THREE.FrontSide)),
@@ -262,7 +275,7 @@ App.prototype.makePlanes = function() {
 	vec3(0, 0, 0),
 	vec3(0, 0, 1),
 	vec3().copy(wvec),
-	vec3(0, 0, 1).add(wvec)
+	vec3(0, 0, 1).add(wvec).setZ(1)
     );
     planesGroup.add(new THREE.Mesh(zwPlane, this.makeBasicMaterial(App.COLOR_YELLOW, THREE.FrontSide)),
 		    new THREE.Mesh(zwPlane, this.makeBasicMaterial(App.COLOR_BLUE, THREE.BackSide)));
@@ -271,6 +284,7 @@ App.prototype.makePlanes = function() {
 };
 
 App.prototype.makeIcoplanes = function() {
+    var group = new THREE.Group();
     var plane1 = this.makePlaneGeometry(
 	vec3(x, y, 0),
 	vec3(x, -y, 0),
@@ -298,7 +312,7 @@ App.prototype.makeIcoplanes = function() {
 };
 
 App.prototype.makeIcosphere = function(depth) {
-    var group = new THREE.Group();
+
     var phi = (1 + Math.sqrt(5))/ 2;
     var x = Math.sqrt(1/(1 + (phi ** 2)));
     var y = phi * x;
@@ -367,29 +381,36 @@ App.prototype.makeIcosphere = function(depth) {
 	triangles = newTriangles;
     }
 
-    geometry.faces = _.map(triangles, function(t) {
-	return new THREE.Face3(t.a, t.b, t.c);
-    });
 
+    geometry.faces = _.map(triangles, function(t) {
+	var face = new THREE.Face3(t.a, t.b, t.c);
+	return face;
+    }, this);
     geometry.mergeVertices();
 
-    var icoSphereWireframe = new THREE.LineSegments(new THREE.WireframeGeometry(geometry), this.makeBasicMaterial(0xFFFFFF));
+    var vertices = geometry.vertices;
+    for (var i = 0; i < geometry.faces.length; i++) {
+	face = geometry.faces[i];
+	face.vertexColors = [ 
+	    new THREE.Color(this.colorPointFromDisplacement(vertices[face.a])),
+	    new THREE.Color(this.colorPointFromDisplacement(vertices[face.b])),
+	    new THREE.Color(this.colorPointFromDisplacement(vertices[face.c])) 
+        ];
+    }
 
-    var icoSphere = new THREE.Mesh(geometry, this.makeBasicMaterial(App.COLOR_PINK));
-    group.add(icoSphere);
-    group.add(icoSphereWireframe);
-
-    return group;
+    var material = new THREE.MeshBasicMaterial({color: 0xFFFFFF, vertexColors: THREE.VertexColors, side: THREE.DoubleSide});
+    var icoSphere = new THREE.Mesh(geometry, material);
+    return icoSphere;
 };
 
 App.prototype.getDotProducts = function(point) {
     return {
-	XY: App.XY_NORMAL.dot(point),
-	XZ: App.XZ_NORMAL.dot(point),
-	XW: App.XW_NORMAL.dot(point),
-	YZ: App.YZ_NORMAL.dot(point),
-	YW: App.YW_NORMAL.dot(point),
-	ZW: App.ZW_NORMAL.dot(point),
+	XY: App.XY_PLANE.normal.dot(point) >= 0,
+	XZ: App.XZ_PLANE.normal.dot(point) >= 0,
+	XW: App.XW_PLANE.normal.dot(point) >= 0,
+	YZ: App.YZ_PLANE.normal.dot(point) >= 0,
+	YW: App.YW_PLANE.normal.dot(point) >= 0,
+	ZW: App.ZW_PLANE.normal.dot(point) >= 0,
     };
 };
 
@@ -417,8 +438,9 @@ App.StartingFunctions = {
 	var thetanew = (theta - 0.2) % (2 * Math.PI);
 	var xnew = rnew * Math.cos(thetanew);
 	var ynew = rnew * Math.sin(thetanew);
+	var znew = 0.88 * (inputPoint.z - 1/2);
 
-	var outputPoint = vec3(xnew + 1/2, ynew + 1/2, inputPoint.z);
+	var outputPoint = vec3(xnew + 1/2, ynew + 1/2, znew + 1/2);
 	outputPoint.clampScalar(0, 1);
 	return outputPoint;
     },
@@ -442,17 +464,18 @@ App.COLOR_GREEN = 0x00ff00;
 App.COLOR_ORANGE = 0xff9900;
 App.COLOR_PINK = 0xffbad2;
 
+App.ORIGIN = vec3();
 App.X_DIR = vec3(1, 0, 0); // Positive X
 App.Y_DIR = vec3(0, 1, 0); // Positive Y
 App.Z_DIR = vec3(0, 0, 1); // Positive Z
 App.W_DIR = vec3(-1, -1, -1).normalize(); // Extra axis: W
 
-App.XY_NORMAL = vec3().crossVectors(App.X_DIR, App.Y_DIR);
-App.XZ_NORMAL = vec3().crossVectors(App.X_DIR, App.Z_DIR);
-App.XW_NORMAL = vec3().crossVectors(App.X_DIR, App.W_DIR);
-App.YZ_NORMAL = vec3().crossVectors(App.Y_DIR, App.Z_DIR);
-App.YW_NORMAL = vec3().crossVectors(App.Y_DIR, App.W_DIR);
-App.ZW_NORMAL = vec3().crossVectors(App.Z_DIR, App.W_DIR);
+App.XY_PLANE = (new THREE.Plane()).setFromCoplanarPoints(App.ORIGIN, App.X_DIR, App.Y_DIR);
+App.XZ_PLANE = (new THREE.Plane()).setFromCoplanarPoints(App.ORIGIN, App.Z_DIR, App.X_DIR);
+App.YZ_PLANE = (new THREE.Plane()).setFromCoplanarPoints(App.ORIGIN, App.Y_DIR, App.Z_DIR);
+App.XW_PLANE = (new THREE.Plane()).setFromCoplanarPoints(App.ORIGIN, App.X_DIR, App.W_DIR);
+App.YW_PLANE = (new THREE.Plane()).setFromCoplanarPoints(App.ORIGIN, App.Y_DIR, App.W_DIR);
+App.ZW_PLANE = (new THREE.Plane()).setFromCoplanarPoints(App.ORIGIN, App.Z_DIR, App.W_DIR);
 
 
 		
