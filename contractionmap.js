@@ -9,6 +9,8 @@ function App(project, canvasSize) {
     this.currentFunction = null;
     this.boundClampToSquare = _.bind(this.clampToSquare, this);
 
+    this.altColors = true;
+
     this.nightMode = true;
     this.showFunctionLines = true;
     this.addBorder = true;
@@ -26,8 +28,8 @@ function App(project, canvasSize) {
     this.functionLineLayer = new Layer();
     this.pointLayer = new Layer();
     this.colorPoints(App.StartingFunctions.contractionmap);
-
-    this.showPotential = true;
+    
+    this.showPotentials = false;
     this.potentialValueLayer = new Layer();
     this.drawPotentials();
 };
@@ -84,6 +86,30 @@ App.prototype.getPointRadius = function() {
     return Math.min(10, Math.max(4, Math.ceil(this.size - 20) / 4));
 };
 
+App.prototype.indexToColor = function(ix) {
+    if (this.altColors) {
+	switch (ix) {
+	case 1:
+	    return 'green';
+	case 2:
+	    return 'purple';
+	case 3:
+	    return 'orange';
+	}
+    }
+	    
+	
+    switch (ix) {
+    case 1:
+	return 'yellow';
+    case 2:
+	return 'red';
+    case 3:
+	return 'blue';
+    }
+    throw 'Bad index';
+};
+
 App.prototype.getColorFromPoint = function(x, y, inGridCoord) {
     var color = null;
     if (!inGridCoord) {
@@ -125,12 +151,22 @@ App.prototype.isBorderPoint = function(x, y) {
 };
 
 App.prototype.getBorderColorFromPoint = function(x, y) {
+    if (this.altColors) {
+	if (x == 0 && y == 0) {
+	    return 1;
+	} else if (y == 0) {
+	    return 2;
+	} else {
+	    return 3;
+	}
+    }
+    
     if (y == 0 && x < this.numCols()) {
-	return 'yellow';
+	return 1;
     } else if (y > 0 && x == 0) {
-	return 'red';
+	return 2;
     } else {
-	return 'blue';
+	return 3;
     }
 };
 
@@ -146,6 +182,26 @@ App.prototype.getContentColorFromPoint = function(x, y) {
 };
 
 App.prototype.getColorFromDisplacementAndPoint = function(displacement, x, y) {
+    if (this.altColors) {
+	if (displacement.x >= 0 && displacement.y >= 0) {
+	    if (y == this.numContentCols()) {
+		return 3;
+	    } else if (x == this.numContentCols()) {
+		return 2;
+	    } else {
+		return 1;
+	    }
+	} else if (displacement.x <= 0 && displacement.y >= 0) {
+	    if (y == this.numContentCols()) {
+		return 3;		
+	    } else {
+		return 2;
+	    }
+	} else {
+	    return 3;
+	}
+    }
+    
     var angle = displacement.angleInRadians;
     if (angle < 0) {
 	angle = angle + 2 * Math.PI;
@@ -156,16 +212,16 @@ App.prototype.getColorFromDisplacementAndPoint = function(displacement, x, y) {
     
     if (angle >= 0 && angle <= Math.PI/2) {
 	if (angle == 0 && y == this.numContentCols()) {
-	    return 'red';
+	    return 2;
 	} else if (angle == Math.PI/2 && x == this.numContentCols()) {
-	    return 'blue';	    
+	    return 3;
 	} else { 
-	    return 'yellow';
+	    return 1;
 	}
     } else if (angle > Math.PI/2 && angle <= 5*Math.PI/4) {
-	return 'blue';
+	return 3;
     } else {
-	return 'red';
+	return 2;
     }
 };
 
@@ -251,7 +307,7 @@ App.prototype.getSuccessor = function(tri) {
     }
     var redIndex = null;
     for (var i = 0; i <= 2; i++) {
-	if (vertices[i].color == 'red' && vertices[(i + 1) % 3].color == 'yellow') {
+	if (vertices[i].color == 2 && vertices[(i + 1) % 3].color == 1) {
 	    redIndex = i;
 	    break;
 	}
@@ -287,7 +343,7 @@ App.prototype.getPredecessor = function(tri) {
     }
     var redIndex = null;
     for (var i = 0; i <= 2; i++) {
-	if (vertices[i].color == 'yellow' && vertices[(i + 1) % 3].color == 'red') {
+	if (vertices[i].color == 1 && vertices[(i + 1) % 3].color == 2) {
 	    redIndex = i;
 	    break;
 	}
@@ -430,8 +486,7 @@ App.prototype.colorPoints = function(f) {
 	    var fromPoint = inputPoint.multiply(this.totalUsedContentSize()).add(this.getUsedContentMargin());
 
 	    displacement = outputPoint.subtract(inputPoint);
-	    //var color = this.getColorFromPoint(x, y);
-	    var color = this.getColorFromDisplacementAndPoint(displacement, x, y);
+	    var color = this.indexToColor(this.getColorFromDisplacementAndPoint(displacement, x, y));
 	    
 	    circ.fillColor = color;
 	    circ.strokeColor = 'black';
@@ -453,7 +508,7 @@ App.prototype.colorPoints = function(f) {
 			radius: this.getPointRadius()
 		    });
 
-		    circ.fillColor = this.getBorderColorFromPoint(x, y);
+		    circ.fillColor = this.indexToColor(this.getBorderColorFromPoint(x, y));
 		    circ.strokeColor = 'black';
 		}
 	    } else {
@@ -463,7 +518,7 @@ App.prototype.colorPoints = function(f) {
 		    radius: this.getPointRadius()
 		});
 
-		circ.fillColor = this.getBorderColorFromPoint(x, 0);
+		circ.fillColor = this.indexToColor(this.getBorderColorFromPoint(x, 0));
 		circ.strokeColor = 'black';
 
 		center = this.gridCoord(x, this.numCols());
@@ -472,7 +527,7 @@ App.prototype.colorPoints = function(f) {
 		    radius: this.getPointRadius()
 		});
 
-		circ.fillColor = this.getBorderColorFromPoint(x, this.numCols());
+		circ.fillColor = this.indexToColor(this.getBorderColorFromPoint(x, this.numCols()));
 		circ.strokeColor = 'black';
 
 	    }
@@ -481,6 +536,10 @@ App.prototype.colorPoints = function(f) {
 };
 
 App.prototype.drawPotentials = function() {
+    return;
+    if (!this.showPotentials) {
+	return;
+    }
     this.potentialValueLayer.removeChildren();
     this.potentialValueLayer.activate();
 
@@ -559,8 +618,13 @@ App.prototype.toggleAddBorder = function() {
 };
 
 App.prototype.toggleShowPotential = function() {
-    this.showPotential = !this.showPotential;
-    this.potentialValueLayer.visible = this.showPotential;
+    this.showPotentials = !this.showPotentials;
+    this.potentialValueLayer.visible = this.showPotentials;
+};
+
+App.prototype.toggleAltColors = function() {
+    this.altColors = !this.altColors;
+    this.redrawPoints();
 };
 
 App.StartingFunctions = {    

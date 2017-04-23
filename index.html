@@ -44,6 +44,10 @@
 		 app.toggleShowPotential();
 	     });
 
+	     var toggleAltColorsButton = document.getElementById('toggleAltColors');
+	     toggleAltColorsButton.addEventListener('click', function(e) {
+		 app.toggleAltColors();
+	     });
 	     
 	     var functionLineButton = document.getElementById('toggleFunctionLines');
 	     functionLineButton.functionlineson = true;
@@ -104,6 +108,7 @@
 	    <button id="toggleFunctionLines">Toggle Displacement Vectors</button>
 	    <button id="toggleAddBorder">Toggle Add Border</button>
 	    <button id="toggleShowPotential">Toggle Show Potential</button>
+	    <button id="toggleAltColors">Toggle Alt Colors</button>
 	</div>
 	<div id="div2" style="clear: right;">
 	    <label>Size of a grid cell: <input id="gridSizeSlider" type="range" min="8" max="100" step="1" value="48"></label>
