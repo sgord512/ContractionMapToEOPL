@@ -55,7 +55,12 @@
 
 	</div>
 	<script type="text/javascript" src="KeyboardState.js"></script>
+	<script type="text/javascript">
+	 function vec3(x, y, z) { return new THREE.Vector3(x, y, z); }
+	 function mat4() { return new THREE.Matrix4(); }
+	</script>
 	<script type="text/javascript" src="threedcontractionmap.js"></script>
+	<script type="text/javascript" src="scene.js"></script>
 	<script type="text/javascript">
 	 window.onload = function() {
 	     var app = new App(window, document);
