@@ -81,15 +81,21 @@ App = function(window, document) {
 
     this.light = new THREE.DirectionalLight(0xffffff, 0.5);
     this.light.position.set(0, 1, 1);
-    var ambientLight = new THREE.AmbientLight(0x404040);
+    var ambientLight = new THREE.AmbientLight(0x505050);
     this.scene.add(ambientLight);
     this.scene.add(this.light);
 
-    this.hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );
-    this.hemiLight.color.setHSL( 0.6, 1, 0.6 );
-    this.hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
-    this.hemiLight.position.set( 0, 500, 0 );
-    this.scene.add( this.hemiLight );
+    var hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );
+    hemiLight.color.setHSL( 0.6, 1, 0.6 );
+    hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
+    hemiLight.position.set( 0, 500, 0 );
+    this.scene.add( hemiLight );
+
+    var hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );
+    hemiLight.color.setHSL( 0.6, 1, 0.6 );
+    hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
+    hemiLight.position.set( 0, 0, -100 );
+
 
     document.addEventListener( 'keydown', _.bind(this.onKeyDown, this), false );
     document.addEventListener( 'keyup', _.bind(this.onKeyUp, this), false );
@@ -107,8 +113,8 @@ App = function(window, document) {
 
     this.group.add(Scene.makeAxes());
     this.world = new Scene(this.N);
-    this.points = this.world.makePointsAndFunctionLines();
-    //this.points = this.world.makeCustomPoints(Scene.CustomPoints.example1);
+    //this.points = this.world.makePointsAndFunctionLines();
+    this.points = this.world.makeCustomPoints(Scene.CustomPoints.example2, true);
     this.fill = this.world.fillInGrid();
     //this.functionLines = this.world.functionLines;
     

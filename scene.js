@@ -11,17 +11,9 @@ Scene.POINT_RADIUS = 0.012;
 
 Scene.prototype.getPlane = function(x,y,z) {
     if (!this.planes) {
-	this.xyPlane = new THREE.Mesh(
-	    Scene.makePlaneGeometry(vec3(0,1,0), vec3(0,0,0),vec3(1,1,0), vec3(1,0,0)),
-	    Scene.MATERIALS[Scene.COLOR_GREEN]);
-	this.xzPlane = new THREE.Mesh(
-	    Scene.makePlaneGeometry(vec3(0,0,0), vec3(0,0,1),vec3(1,0,0), vec3(1,0,1)),
-	    Scene.MATERIALS[Scene.COLOR_GREEN]);
-
-	this.yzPlane = new THREE.Mesh(
-	    Scene.makePlaneGeometry(vec3(0,1,1), vec3(0,1,0),vec3(0,0,1), vec3(0,0,0)),
-	    Scene.MATERIALS[Scene.COLOR_GREEN]);
-
+	this.xyPlane = Scene.makePlaneGeometry(vec3(0,1,0), vec3(0,0,0),vec3(1,1,0), vec3(1,0,0));
+	this.xzPlane = Scene.makePlaneGeometry(vec3(0,0,0), vec3(0,0,1),vec3(1,0,0), vec3(1,0,1));
+	this.yzPlane = Scene.makePlaneGeometry(vec3(0,1,1), vec3(0,1,0),vec3(0,0,1), vec3(0,0,0));
     }
 
     if (x && y && z) {
@@ -54,27 +46,35 @@ Scene.prototype.nXYZ = function() {
 }
 
 Scene.prototype.fillInGrid = function() {
-    this.fill = new THREE.Group();
     var nXYZ = this.nXYZ();
     var nX = nXYZ.x;
     var nY = nXYZ.y;
     var nZ = nXYZ.z;
 
-    //var geometry = new THREE.geometry();
+    var geometry = new THREE.Geometry();
+
+    function updateAndMerge(geometry, plane, color) {
+	for (var i = 0; i < plane.faces.length; i++) {
+	    face = plane.faces[i];
+	    face.color.setHex(Scene.COLORS[color]);
+	}
+	//plane.updateMatrix();
+	geometry.merge(plane, mat4());
+    }
     
     for (var i = 0; i <= nX; i++) {
 	for (var j = 0; j <= nY; j++) {
 	    for (var k = 0; k <= nZ; k++) {
 		var color = this.getColor(i, j, k);
+		var plane = null;
 		if (i < nX && j < nY) {
 		    if (this.getColor(i + 1, j, k) == color &&
 			this.getColor(i, j + 1, k) == color &&
 			this.getColor(i + 1, j + 1, k) == color) {
-			var plane = this.getPlane(1, 1, 0);
-			plane.scale.set(1/nX, 1/nY, Scene.POINT_RADIUS/2);
-			plane.position.set(i/nX, j/nY, k/nZ);
-			plane.material = Scene.MATERIALS[Scene.COLORS[color]];
-			geometry.merge(plane, this.fill.add(plane);
+			plane = this.getPlane(1, 1, 0);
+			plane.scale(1/nX, 1/nY, Scene.POINT_RADIUS/2);
+			plane.translate(i/nX, j/nY, k/nZ);
+			updateAndMerge(geometry, plane, color);
 		    }
 		}
 
@@ -82,30 +82,39 @@ Scene.prototype.fillInGrid = function() {
 		    if (this.getColor(i, j + 1, k) == color &&
 			this.getColor(i, j, k + 1) == color &&
 			this.getColor(i, j + 1, k + 1) == color) {
-			var plane = this.getPlane(0, 1, 1);
-			plane.scale.set(Scene.POINT_RADIUS/2, 1/nY, 1/nZ);
-			plane.position.set(i/nX, j/nY, k/nZ);
-			plane.material = Scene.MATERIALS[Scene.COLORS[color]];
-			this.fill.add(plane);
+			plane = this.getPlane(0, 1, 1);
+			plane.scale(Scene.POINT_RADIUS/2, 1/nY, 1/nZ);
+			plane.translate(i/nX, j/nY, k/nZ);
+			updateAndMerge(geometry, plane, color);
 		    }
-				}
+		}
 
 		if (i < nX && k < nZ) {
 		    if (this.getColor(i + 1, j, k) == color &&
 			this.getColor(i, j, k + 1) == color &&
 			this.getColor(i + 1, j, k + 1) == color) {
-			var plane = this.getPlane(1, 0, 1);
-			plane.scale.set(1/nX, Scene.POINT_RADIUS/2, 1/nZ);
-			plane.position.set(i/nX, j/nY, k/nZ);
-			plane.material = Scene.MATERIALS[Scene.COLORS[color]];
-			this.fill.add(plane);
+			plane = this.getPlane(1, 0, 1);
+			plane.scale(1/nX, Scene.POINT_RADIUS/2, 1/nZ);
+			plane.translate(i/nX, j/nY, k/nZ);
+			updateAndMerge(geometry, plane, color);
 		    }
 		}
-
 
 	    }
 	}
     }
+
+    var material = new THREE.MeshPhongMaterial({
+	color: 0xFFFFFF,
+	shading: THREE.SmoothShading,
+	vertexColors: THREE.VertexColors,
+	side: THREE.DoubleSide
+    });
+    
+    geometry.computeVertexNormals();
+    geometry.computeFaceNormals();
+    
+    this.fill = new THREE.Mesh(geometry, material);
     return this.fill;
 };
 
@@ -160,9 +169,7 @@ Scene.prototype.makePoint = function(color, position, scaleFactor) {
 Scene.prototype.makeCustomPoints = function(pointArray, flipY, scaleFactor) {
     if (!!flipY) {
 	for (var z = 0; z < pointArray.length; z++) {
-	    for (var y = 0; y < pointArray[0].length; y++) {
-		pointArray[z][y].reverse();
-	    }
+	    pointArray[z].reverse();
 	}
     }
     
@@ -249,8 +256,8 @@ Scene.makePlaneGeometry = function(topLeft, bottomLeft, topRight, bottomRight) {
 	new THREE.Face3(0, 3, 1)
     );
 
-    //geometry.computeFaceNormals();
-    //geometry.computeVertexNormals();
+    geometry.computeFaceNormals();
+    geometry.computeVertexNormals();
     return geometry;
 };
 
@@ -269,7 +276,7 @@ Scene.prototype.makeIcosphere = function(depth) {
         ];
     }
 
-    var material = new THREE.MeshBasicMaterial({color: 0xFFFFFF, vertexColors: THREE.VertexColors, side: THREE.DoubleSide});
+    var material = new THREE.MeshPhongMaterial({color: 0xFFFFFF, vertexColors: THREE.VertexColors, side: THREE.DoubleSide});
     var icoSphere = new THREE.Mesh(geometry, material);
     return icoSphere;
 };
@@ -427,5 +434,36 @@ Scene.CustomPoints = {
 	 [3, 3, 3, 3, 3, 3, 3],
 	 [3, 3, 3, 3, 3, 3, 3],
 	 [3, 3, 3, 3, 3, 3, 3]]
-    ]
+    ],
+
+    example2: (function(i, j, k) {
+	var left = [[2,2,2,3,3],
+		    [0,0,0,0,3],
+		    [0,0,3,3,3],
+		    [0,3,3,3,3],
+		    [0,3,3,3,3]];
+	var right = [[2,3,3,3,3],
+		     [2,3,3,3,3],
+		     [2,3,3,3,3],
+		     [2,2,2,1,3],
+		     [1,1,1,1,3]];
+
+	var points = [];
+	for (var k = 0; k < 5; k++) {
+	    var plane = [];
+	    for (var j = 0; j < 5; j++) {
+		var row = [];
+		for (var i = 0; i < 5; i++) {
+		    if (i < 3) {
+			row.push(left[j][k]);			
+		    } else {
+			row.push(right[j][k]);
+		    }
+		}
+		plane.push(row);
+	    }
+	    points.push(plane);
+	}
+	return points;
+    })()
 };
