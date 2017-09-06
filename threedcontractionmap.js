@@ -113,8 +113,8 @@ App = function(window, document) {
 
     this.group.add(Scene.makeAxes());
     this.world = new Scene(this.N);
-    //this.points = this.world.makePointsAndFunctionLines();
-    this.points = this.world.makeCustomPoints(Scene.CustomPoints.example2, true);
+    this.points = this.world.makePointsAndFunctionLines();
+    //this.points = this.world.makeCustomPoints(Scene.CustomPoints.example2, true);
     this.fill = this.world.fillInGrid();
     //this.functionLines = this.world.functionLines;
     
@@ -123,7 +123,7 @@ App = function(window, document) {
     if (this.functionLines) {
 	this.group.add(this.functionLines);
     }
-    var icosphere = this.world.makeIcosphere(5);
+    var icosphere = this.world.makeIcosphere(3);
     icosphere.applyMatrix((new THREE.Matrix4()).makeScale(0.2, 0.2, 0.2));
     icosphere.translateX(-0.5);
     icosphere.translateY(1);

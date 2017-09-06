@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+  <head>
+      <title>Color Configurations</title>
+	<style>
+	 .code {
+	     font-family: monospace
+	 }
+
+	 body {
+	     margin: 0;
+	     padding: 0;
+	 }
+	</style>
+	<script type="text/javascript" src="underscore.js"></script>
+	<script type="text/javascript" src="paper-full.js"></script>
+	<script type="text/javascript" src="colorset.js"></script>
+	<script type="text/javascript" src="configuration.js"></script>
+	<script type="text/javascript">
+	 paper.install(window);
+	 window.onload = function() {
+	     var canvas = document.getElementById('myCanvas');
+
+	     paper.setup(canvas);
+	     Configuration.initialize(project, 10000, 1680);
+
+	     if (false) { 
+		 Configuration.spacing = 100;
+		 Configuration.xOffsetFactor = new Point(1/5, 1/6);
+		 
+		 var coloring = new Coloring(4, 7, 7);
+		 Squares.installInColoring(coloring, Squares.top[2], [1,2,3]);
+		 Squares.installInColoring(coloring, Squares.bottom[2], [2,3,2]);
+		 coloring.set([0,2,3], 2);
+		 coloring.set([2,2,3], 3);
+		 coloring.set([0,3,3], 3);
+		 coloring.set([2,4,0], 0);
+		 coloring.set([0,1,1], 1);
+		 coloring.set([0,0,2], 3);
+		 coloring.set([3,3,3], 2);
+		 coloring.set([0,4,3], 3);
+		 coloring.set([1,4,3], 2);
+		 coloring.set([2,6,2], 3);
+		 coloring.set([3,4,3], 2);
+		 coloring.set([0,5,3], 2);
+		 coloring.set([3,0,4], 1);
+		 coloring.set([0,0,0], 0);
+		 coloring.set([0,0,1], 0);
+		 coloring.set([0,1,0], 1);
+		 coloring.set([3,3,2], 2);
+		 coloring.set([3,4,0], 1);
+		 coloring.set([3,2,3], 3);
+		 coloring.set([0,3,1], 2);
+		 coloring.set([0,3,0], 0);
+		 //coloring.set(
+		     coloring.propagateConstraints();
+		 coloring.drawColoring(new Point(300, Configuration.canvasHeight - 700));
+	     }
+	     
+	     if (true) { 	     
+ 		 var xSize = 4;
+ 		 var ySize = 4;
+ 		 var makeSquareGrid = function(topSquare, botSquare, bl, moveBot) {
+  		     for (var x = 0; x < xSize - 1; x++) { 
+  			 for (var y = 0; y < ySize - 1 ; y++) {
+  			     var coloring = new Coloring(2, xSize, ySize);
+  			     Squares.installInColoring(coloring, botSquare, !!moveBot ? [1,y,x] : [1,1,1]);
+  			     Squares.installInColoring(coloring, topSquare, !!moveBot ? [0,1,1] : [0,y,x]);
+  			     coloring.propagateConstraints();
+  			     if (coloring.isLegal()) {
+ 				 coloring.drawColoring(bl.add(new Point(Configuration.spacing * coloring.z * x + 10,
+ 									Configuration.spacing * coloring.y * y + 10)));
+ 			     }
+  			 }
+  		     }
+ 		 };
+		 
+ 		 if (true) { 
+ 		     var counter = 0;
+ 		     for (var i = 0; i < 2; i++) { 
+ 			 for (var top = 0; top < Squares.top.length; top++) {
+ 			     for (var bot = 0; bot < Squares.bottom.length; bot++) {
+ 				 var bl = new Point(20 + 300 * (counter % 3) , Configuration.canvasHeight - (500 * (counter + 1)) - 20);
+ 				 makeSquareGrid(Squares.top[top], Squares.bottom[bot], bl, !!i);
+ 				 counter = counter + 1;
+ 			     }
+ 			 }
+ 		     }
+ 		 }
+	     }
+	     
+	     /* for (var x = 0; x < 5; x++) {
+		for (var y = 0; y < 4; y++) {
+		var coloring = new Coloring(2, 6, 6);
+		Squares.installInColoring(coloring, Squares.bottom[0], [1,2,2]);
+		Squares.installInColoring(coloring, Squares.top[0], [0,y,x]);
+		coloring.propagateConstraints();
+		coloring.drawColoring(new Point(240 * x + 20, 240 * y + 20));
+
+		}
+		}
+	      */
+	     /* for (var x = 0; x < Squares.top.length; x++) {
+		for (var y = 0; y < Squares.bottom.length; y++) {
+		var coloring = new Coloring(2, 4, 4);
+		Squares.installInColoring(coloring, Squares.bottom[x], [1,1,1]);
+		Squares.installInColoring(coloring, Squares.top[y], [0,0,2]);
+		coloring.propagateConstraints();
+		coloring.drawColoring(new Point(300 * x + 20, 300 * y + 20));
+
+		}
+		}*/
+	 };
+	</script>
+    </head>
+    <body>
+	<canvas id="myCanvas" style="width: 1680px; height: 10000px;"></canvas>
+    </body>
+</html>

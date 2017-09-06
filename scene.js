@@ -2,9 +2,19 @@ var Scene = function(N) {
     this.N = N;
     this.points = null;
     this.functionLines = null;
-    this.sphere = null;
+    this.sphereGeometry = null;
+
+    this.planes = false;
+    this.xyPlane = null;
+    this.xzPlane = null;
+    this.yzPlane = null;
 
     this.colorGrid = null;
+
+    this.fill = null;
+    this.fillGeometry = new THREE.Geometry();
+    this.points = null;
+    this.pointsGeometry = new THREE.Geometry();
 };
 
 Scene.POINT_RADIUS = 0.012;
@@ -14,6 +24,7 @@ Scene.prototype.getPlane = function(x,y,z) {
 	this.xyPlane = Scene.makePlaneGeometry(vec3(0,1,0), vec3(0,0,0),vec3(1,1,0), vec3(1,0,0));
 	this.xzPlane = Scene.makePlaneGeometry(vec3(0,0,0), vec3(0,0,1),vec3(1,0,0), vec3(1,0,1));
 	this.yzPlane = Scene.makePlaneGeometry(vec3(0,1,1), vec3(0,1,0),vec3(0,0,1), vec3(0,0,0));
+	this.planes = true;
     }
 
     if (x && y && z) {
@@ -45,23 +56,20 @@ Scene.prototype.nXYZ = function() {
 		this.colorGrid.length - 1);
 }
 
+Scene.prototype.addPlane = function(plane, color) {
+    for (var i = 0; i < plane.faces.length; i++) {
+	face = plane.faces[i];
+	face.color.setHex(Scene.COLORS[color]);
+    }
+    
+    this.fillGeometry.merge(plane, mat4());
+};
+
 Scene.prototype.fillInGrid = function() {
     var nXYZ = this.nXYZ();
     var nX = nXYZ.x;
     var nY = nXYZ.y;
     var nZ = nXYZ.z;
-
-    var geometry = new THREE.Geometry();
-
-    function updateAndMerge(geometry, plane, color) {
-	for (var i = 0; i < plane.faces.length; i++) {
-	    face = plane.faces[i];
-	    face.color.setHex(Scene.COLORS[color]);
-	}
-	//plane.updateMatrix();
-	geometry.merge(plane, mat4());
-    }
-    
     for (var i = 0; i <= nX; i++) {
 	for (var j = 0; j <= nY; j++) {
 	    for (var k = 0; k <= nZ; k++) {
@@ -74,7 +82,7 @@ Scene.prototype.fillInGrid = function() {
 			plane = this.getPlane(1, 1, 0);
 			plane.scale(1/nX, 1/nY, Scene.POINT_RADIUS/2);
 			plane.translate(i/nX, j/nY, k/nZ);
-			updateAndMerge(geometry, plane, color);
+			this.addPlane(plane, color);
 		    }
 		}
 
@@ -85,7 +93,7 @@ Scene.prototype.fillInGrid = function() {
 			plane = this.getPlane(0, 1, 1);
 			plane.scale(Scene.POINT_RADIUS/2, 1/nY, 1/nZ);
 			plane.translate(i/nX, j/nY, k/nZ);
-			updateAndMerge(geometry, plane, color);
+			this.addPlane(plane, color);
 		    }
 		}
 
@@ -96,7 +104,7 @@ Scene.prototype.fillInGrid = function() {
 			plane = this.getPlane(1, 0, 1);
 			plane.scale(1/nX, Scene.POINT_RADIUS/2, 1/nZ);
 			plane.translate(i/nX, j/nY, k/nZ);
-			updateAndMerge(geometry, plane, color);
+			this.addPlane(plane, color);
 		    }
 		}
 
@@ -104,17 +112,10 @@ Scene.prototype.fillInGrid = function() {
 	}
     }
 
-    var material = new THREE.MeshPhongMaterial({
-	color: 0xFFFFFF,
-	shading: THREE.SmoothShading,
-	vertexColors: THREE.VertexColors,
-	side: THREE.DoubleSide
-    });
+    this.fillGeometry.computeVertexNormals();
+    this.fillGeometry.computeFaceNormals();
     
-    geometry.computeVertexNormals();
-    geometry.computeFaceNormals();
-    
-    this.fill = new THREE.Mesh(geometry, material);
+    this.fill = new THREE.Mesh(this.fillGeometry, Scene.VERTEX_COLORS_MATERIAL);
     return this.fill;
 };
 
@@ -148,25 +149,30 @@ Scene.makeAxes = function() {
     return group;
 };
 
-Scene.prototype.makePoint = function(color, position, scaleFactor) {
-    if (!this.sphere) {
-	this.sphere = new THREE.Mesh(
-	    new THREE.BoxGeometry(2 * Scene.POINT_RADIUS, 2 * Scene.POINT_RADIUS, 2 * Scene.POINT_RADIUS, 2, 2),
-	    Scene.MATERIALS[Scene.COLOR_GREEN]
+Scene.prototype.getPoint = function(color, position, scaleFactor) {
+    if (!this.sphereGeometry) {
+	this.sphereGeometry = new THREE.BoxGeometry(
+	    2 * Scene.POINT_RADIUS,
+	    2 * Scene.POINT_RADIUS,
+	    2 * Scene.POINT_RADIUS,
+	    2, 2
 	);
     }
 
-    if (!scaleFactor) {
-	scaleFactor = 1;
-    }
-    var sphere = this.sphere.clone();
-    sphere.scale.set(scaleFactor, scaleFactor, scaleFactor);
-    sphere.position.set(position.x, position.y, position.z);
-    sphere.material = Scene.MATERIALS[Scene.COLORS[color]];
-    return sphere;
+    return this.sphereGeometry.clone();
 }
 
+Scene.prototype.addPoint = function(point, color) {
+    for (var i = 0; i < point.faces.length; i++) {
+	face = point.faces[i];
+	face.color.setHex(Scene.COLORS[color]);
+    }
+    
+    this.pointsGeometry.merge(point, mat4());
+};
+
 Scene.prototype.makeCustomPoints = function(pointArray, flipY, scaleFactor) {
+    
     if (!!flipY) {
 	for (var z = 0; z < pointArray.length; z++) {
 	    pointArray[z].reverse();
@@ -187,15 +193,20 @@ Scene.prototype.makeCustomPoints = function(pointArray, flipY, scaleFactor) {
     for (var k = 0; k <= nZ; k++) {
 	for (var j = 0; j <= nY; j++) {
 	    for (var i = 0; i <= nX; i++) {
-		var point = this.makePoint(
-		    pointArray[k][j][i],
-		    vec3(i/nX, j/nY, k/nZ),
-		    scaleFactor || 1
-		);
-		this.points.add(point);
+		var point = this.getPoint();
+		var scalar = scaleFactor || 1;
+		var color = pointArray[k][j][i];
+		point.scale(scalar, scalar, scalar);
+		point.translate(i/nX, j/nY, k/nZ);
+		this.addPoint(point, color);
 	    }
 	}
     }
+
+    this.pointsGeometry.computeVertexNormals();
+    this.pointsGeometry.computeFaceNormals();
+    
+    this.points = new THREE.Mesh(this.pointsGeometry, Scene.VERTEX_COLORS_MATERIAL);
     return this.points;
 };
 
@@ -276,8 +287,7 @@ Scene.prototype.makeIcosphere = function(depth) {
         ];
     }
 
-    var material = new THREE.MeshPhongMaterial({color: 0xFFFFFF, vertexColors: THREE.VertexColors, side: THREE.DoubleSide});
-    var icoSphere = new THREE.Mesh(geometry, material);
+    var icoSphere = new THREE.Mesh(geometry, Scene.VERTEX_COLORS_MATERIAL);
     return icoSphere;
 };
 
@@ -303,6 +313,15 @@ Scene.S[0].ix = 0;
 Scene.S[1].ix = 1;
 Scene.S[2].ix = 2;
 Scene.S[3].ix = 3;
+
+Scene.VERTEX_COLORS_MATERIAL = new THREE.MeshPhongMaterial({
+    color: 0xFFFFFF,
+    shading: THREE.SmoothShading,
+    vertexColors: THREE.VertexColors,
+    side: THREE.DoubleSide
+});
+    
+
 
 Scene.regions = function(colors, dir) {
     var isNonnegative = function(col) {

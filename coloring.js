@@ -1,0 +1,6 @@
+function Coloring() {
+
+
+};
+
+Coloring.prototype.
